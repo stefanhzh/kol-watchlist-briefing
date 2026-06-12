@@ -260,6 +260,37 @@ reports/kol_watchlist/<运行时间>/
 - `report.md`：人读的 Markdown 报告。
 - `report.json`：给后续程序处理的结构化结果。
 
+## 日报后的单条深挖
+
+日报负责发现和排序；如果你看到某一条特别想了解，可以继续做单条深挖。
+
+直接给 URL：
+
+```bash
+python -X utf8 -m scripts.kol_watchlist.cli deep-dive "https://www.xiaoyuzhoufm.com/episode/EPISODE_ID"
+```
+
+或者根据最近一次日报里的标题查找 URL：
+
+```bash
+python -X utf8 -m scripts.kol_watchlist.cli deep-dive "标题里的几个关键词" --latest-report "reports/kol_watchlist/某次运行/report.json"
+```
+
+深挖报告会生成在：
+
+```text
+reports/kol_watchlist_deep_dive/<运行时间>/
+```
+
+当前支持的长内容材料：
+
+- 小宇宙：公开 episode 页面里的 shownotes、transcript（如果页面公开提供）、comments。
+- 微信公众号：从本地 We-MP-RSS SQLite 数据库里查正文；前提是数据库已经存到全文。
+- B站：先生成页面探测和诊断；如果安装了 Crawl4AI，会尝试抓页面 Markdown。真正的字幕/音频转写还没有默认实现。
+- 普通网页：可用 Crawl4AI 尝试网页正文。
+
+深挖命令输出的是“可总结材料包”，不是默认调用大模型。你在同一个对话里把 URL 或标题给 Codex 后，Codex 可以读取这份材料，继续帮你写全文总结。
+
 ## 怎么理解报告排序
 
 当前 MVP 的重要性排序主要看这些因素：

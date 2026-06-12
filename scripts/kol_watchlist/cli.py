@@ -24,6 +24,7 @@ from scripts.kol_watchlist.config import (  # noqa: E402
 )
 from scripts.kol_watchlist.utils import request_text  # noqa: E402
 from scripts.kol_watchlist.dedupe import dedupe_items  # noqa: E402
+from scripts.kol_watchlist.deep_dive import deep_dive, write_deep_dive_outputs  # noqa: E402
 from scripts.kol_watchlist.enrichers.crawl4ai_fulltext import (  # noqa: E402
     CRAWL4AI_LEVELS,
     enrich_items_with_crawl4ai,
@@ -36,16 +37,22 @@ from scripts.kol_watchlist.state import filter_unseen_items, load_state, mark_se
 
 
 REPORTS_DIR = ROOT / "reports" / "kol_watchlist"
+DEEP_DIVE_DIR = ROOT / "reports" / "kol_watchlist_deep_dive"
 DEFAULT_CONFIG_PATH = ROOT / "config" / "kol_watchlist.yaml"
 EXAMPLE_CONFIG_PATH = ROOT / "config" / "kol_watchlist.example.yaml"
 RECIPES_PATH = ROOT / "config" / "kol_watchlist.recipes.yaml"
 DEFAULT_STATE_PATH = ROOT / "data" / "kol_watchlist" / "state.json"
-COMMANDS = {"init", "list", "doctor", "run", "add-rss", "add-youtube", "add-xiaoyuzhou"}
+COMMANDS = {"init", "list", "doctor", "run", "add-rss", "add-youtube", "add-xiaoyuzhou", "deep-dive"}
 
 
 def default_output_dir() -> Path:
     stamp = datetime.now().astimezone().strftime("%Y-%m-%d_%H-%M-%S")
     return REPORTS_DIR / stamp
+
+
+def default_deep_dive_output_dir() -> Path:
+    stamp = datetime.now().astimezone().strftime("%Y-%m-%d_%H-%M-%S")
+    return DEEP_DIVE_DIR / stamp
 
 
 def parse_formats(value: str) -> set[str]:
@@ -173,6 +180,20 @@ def add_xiaoyuzhou(args: argparse.Namespace) -> None:
     _append_account(args, account)
 
 
+def run_deep_dive(args: argparse.Namespace) -> tuple[object, dict[str, str]]:
+    _ensure_default_config(args)
+    report = deep_dive(
+        args.query,
+        config_path=args.config,
+        latest_report=args.latest_report,
+        max_chars=args.max_chars,
+        use_crawl4ai=not args.no_crawl4ai,
+    )
+    output_dir = args.output_dir or default_deep_dive_output_dir()
+    written = write_deep_dive_outputs(output_dir, report)
+    return report, written
+
+
 def run(args: argparse.Namespace) -> tuple[WatchlistReport, dict[str, str]]:
     _ensure_default_config(args)
     config = load_watchlist_config(args.config)
@@ -280,6 +301,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     _add_add_args(add_xiaoyuzhou_parser, default_enrichment="")
     add_xiaoyuzhou_parser.add_argument("source")
     add_xiaoyuzhou_parser.add_argument("--source-mode", default="")
+
+    deep_dive_parser = subparsers.add_parser("deep-dive", help="Build an on-demand long-content material pack.")
+    _add_config_args(deep_dive_parser)
+    deep_dive_parser.add_argument("query", help="Episode/article/video URL, or a title from a recent report.")
+    deep_dive_parser.add_argument("--latest-report", type=Path, help="Optional report.json to resolve a title to URL.")
+    deep_dive_parser.add_argument("--output-dir", type=Path)
+    deep_dive_parser.add_argument("--max-chars", type=int, default=50000)
+    deep_dive_parser.add_argument("--no-crawl4ai", action="store_true", help="Disable optional Crawl4AI page probing.")
 
     return parser.parse_args(argv)
 
@@ -478,6 +507,13 @@ def main(argv: list[str] | None = None) -> None:
         return
     if args.command == "add-xiaoyuzhou":
         add_xiaoyuzhou(args)
+        return
+    if args.command == "deep-dive":
+        report, written = run_deep_dive(args)
+        for kind, path in written.items():
+            print(f"{kind}={path}")
+        print(f"platform={getattr(report, 'platform', '')}")
+        print(f"status={getattr(report, 'source_status', '')}")
         return
     report, written = run(args)
     for kind, path in written.items():

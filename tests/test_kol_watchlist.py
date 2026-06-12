@@ -22,6 +22,7 @@ if str(ROOT) not in sys.path:
 
 from scripts.kol_watchlist import cli  # noqa: E402
 from scripts.kol_watchlist.config import load_watchlist_config  # noqa: E402
+from scripts.kol_watchlist.deep_dive import deep_dive  # noqa: E402
 from scripts.kol_watchlist.dedupe import dedupe_items  # noqa: E402
 from scripts.kol_watchlist.enrichers.crawl4ai_fulltext import enrich_items_with_crawl4ai  # noqa: E402
 from scripts.kol_watchlist.models import WatchAccount, WatchItem, WatchlistConfig, WatchlistReport  # noqa: E402
@@ -311,6 +312,74 @@ accounts:
         args = cli.parse_args(["--config", "config/kol_watchlist.example.yaml", "--dry-run"])
         self.assertEqual(args.command, "run")
         self.assertTrue(args.dry_run)
+
+    def test_deep_dive_xiaoyuzhou_episode_extracts_notes_and_comments(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config, _example = self._create_empty_watchlist_config(Path(tmp))
+            with patch("scripts.kol_watchlist.deep_dive.request_text", return_value=XIAOYUZHOU_EPISODE_FIXTURE):
+                report = deep_dive("https://www.xiaoyuzhoufm.com/episode/EP_1", config_path=config)
+        self.assertEqual(report.platform, "xiaoyuzhou")
+        self.assertIn("SpaceX IPO", report.title)
+        self.assertIn("SpaceX IPO", report.fulltext)
+        self.assertTrue(report.comments)
+
+    def test_deep_dive_wechat_reads_local_fulltext_by_title(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db_path = root / "we_mp_rss.db"
+            self._create_we_mp_rss_db(db_path)
+            config = root / "kol_watchlist.yaml"
+            config.write_text(
+                f"""
+version: 1
+accounts:
+  - platform: we_mp_rss
+    display_name: Local WeChat
+    db_path: {db_path.as_posix()}
+    fetch_limit: 5
+    enrichment_level: fulltext
+""",
+                encoding="utf-8",
+            )
+            report = deep_dive("OpenAI phone plans surface", config_path=config)
+        self.assertEqual(report.platform, "we_mp_rss")
+        self.assertEqual(report.account, "Example Account")
+        self.assertIn("Full local article body", report.fulltext)
+
+    def test_deep_dive_bilibili_reports_subtitle_limitations(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config, _example = self._create_empty_watchlist_config(Path(tmp))
+            with patch("scripts.kol_watchlist.deep_dive.request_text", return_value="<html><title>Bili Video</title></html>"):
+                report = deep_dive("https://www.bilibili.com/video/BV123", config_path=config, use_crawl4ai=False)
+        self.assertEqual(report.platform, "bilibili")
+        self.assertIn("Bilibili transcript/subtitle extraction is not implemented yet", " ".join(report.diagnostics))
+        self.assertEqual(report.title, "Bili Video")
+
+    def test_deep_dive_resolves_title_from_latest_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config, _example = self._create_empty_watchlist_config(root)
+            latest = root / "report.json"
+            latest.write_text(
+                json.dumps(
+                    {
+                        "items": [
+                            {
+                                "title": "Bili Deep Dive Item",
+                                "url": "https://www.bilibili.com/video/BV999",
+                                "canonical_url": "https://www.bilibili.com/video/BV999",
+                                "platform": "bilibili",
+                                "account_display_name": "Bili Account",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with patch("scripts.kol_watchlist.deep_dive.request_text", return_value="<html><title>Bili Title</title></html>"):
+                report = deep_dive("Bili Deep Dive", config_path=config, latest_report=latest, use_crawl4ai=False)
+        self.assertEqual(report.url, "https://www.bilibili.com/video/BV999")
+        self.assertEqual(report.platform, "bilibili")
 
     def test_crawl4ai_enricher_populates_fulltext_when_available(self) -> None:
         class FakeCrawler:

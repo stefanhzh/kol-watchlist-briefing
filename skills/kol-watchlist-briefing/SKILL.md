@@ -62,6 +62,14 @@ python -X utf8 -m scripts.kol_watchlist.cli run --lookback-hours 24 --format md,
 
 For a real daily run that marks items as seen, omit `--dry-run`.
 
+Build an on-demand long-content material pack:
+
+```bash
+python -X utf8 -m scripts.kol_watchlist.cli deep-dive "URL or title keywords"
+```
+
+If the user references an item title from a previous briefing, pass the latest `report.json` with `--latest-report`.
+
 ## Natural Language Workflow
 
 When the user asks to list current sources, run `list` and summarize the sources in plain Chinese.
@@ -75,6 +83,13 @@ When the user asks to check whether a coworker's machine is ready, run `doctor`.
 - Private Discord/X/TikTok/OAuth sources need explicit credentials or bots and should stay local.
 
 When the user asks to run a briefing, run `run`. Use `--dry-run` during development unless the user clearly wants state updated.
+
+When the user asks to understand one specific long item after a briefing, run `deep-dive` with the URL or title. Then read the generated `deep_dive.md` or `deep_dive.json` and summarize it in the conversation. Current long-content behavior:
+
+- Xiaoyuzhou: extract public shownotes, transcript when exposed, and comments.
+- We-MP-RSS/WeChat: search configured local databases by URL or title and use stored fulltext when present.
+- Bilibili: probe public page/Crawl4AI material and clearly report that subtitle/audio transcription is not implemented by default.
+- Generic web pages: use optional Crawl4AI if available.
 
 When the user asks to add a new source, first identify the platform capability:
 
