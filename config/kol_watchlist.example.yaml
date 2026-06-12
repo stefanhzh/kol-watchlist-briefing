@@ -1,0 +1,47 @@
+version: 1
+timezone: Asia/Shanghai
+default_lookback_hours: 24
+
+defaults:
+  fetch_limit: 10
+  include_replies: false
+  include_comments: false
+  enrichment_level: metadata
+  priority: medium
+
+ranking:
+  account_priority_weight: 0.24
+  topic_match_weight: 0.22
+  recency_weight: 0.16
+  engagement_weight: 0.14
+  content_type_weight: 0.10
+  enrichment_weight: 0.08
+  reliability_weight: 0.06
+
+accounts:
+  - platform: youtube
+    account_id: UC_x5XG1OV2P6uZZ5FSM9Ttw
+    handle: GoogleDevelopers
+    display_name: Google Developers
+    priority: high
+    topics: [ai, cloud, developer-tools]
+    fetch_limit: 8
+    enrichment_level: metadata
+    source_mode: rss
+
+  - platform: rss
+    feed_url: https://hnrss.org/frontpage
+    display_name: Hacker News Front Page
+    priority: medium
+    topics: [ai, startup, developer-tools]
+    fetch_limit: 10
+    enrichment_level: metadata
+
+  - platform: xiaoyuzhou
+    podcast_url: https://www.xiaoyuzhoufm.com/podcast/6543750424e7ad2107e8b0b5
+    display_name: 听懂涨声
+    priority: high
+    topics: [capital-markets, ipo, macro, ai]
+    fetch_limit: 5
+    enrichment_level: episode_notes
+    source_mode: public_page

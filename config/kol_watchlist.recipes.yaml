@@ -1,0 +1,201 @@
+# KOL Watchlist Recipes
+#
+# This file is a copy/paste cookbook for adding sources to a local
+# config/kol_watchlist.yaml. It is not meant to be run as-is. Keep private
+# paths, cookies, tokens, and company-internal feeds in local config only.
+
+version: 1
+
+recipes:
+  rss_generic:
+    description: Any public RSS or Atom feed, including blogs, Substack, newsletters, and podcasts.
+    status: stable
+    user_should_provide:
+      - feed_url
+      - display_name
+    example:
+      platform: rss
+      feed_url: https://example.com/feed.xml
+      display_name: Example Feed
+      priority: medium
+      topics: [ai, investing]
+      fetch_limit: 10
+      enrichment_level: metadata
+
+  xiaoyuzhou_podcast:
+    description: Xiaoyuzhou podcast page. The provider reads public page data and checks new episodes.
+    status: stable_public_page
+    user_should_provide:
+      - podcast_url
+    example:
+      platform: xiaoyuzhou
+      podcast_url: https://www.xiaoyuzhoufm.com/podcast/6543750424e7ad2107e8b0b5
+      display_name: 听懂涨声
+      priority: high
+      topics: [capital-markets, ipo, macro, ai]
+      fetch_limit: 5
+      enrichment_level: episode_notes
+      source_mode: public_page
+
+  xiaoyuzhou_episode_to_podcast:
+    description: Xiaoyuzhou episode page. The provider tries to resolve the parent podcast and follows the podcast.
+    status: stable_public_page
+    user_should_provide:
+      - episode_url
+    example:
+      platform: xiaoyuzhou
+      episode_url: https://www.xiaoyuzhoufm.com/episode/6a29033bdbccffcfa9c6a051
+      display_name: 听懂涨声
+      priority: high
+      topics: [capital-markets, ipo, macro, ai]
+      fetch_limit: 5
+      enrichment_level: episode_notes
+      source_mode: public_page
+
+  youtube_channel:
+    description: YouTube channel uploads via official channel RSS.
+    status: stable
+    user_should_provide:
+      - channel_id
+    example:
+      platform: youtube
+      account_id: UC_x5XG1OV2P6uZZ5FSM9Ttw
+      handle: GoogleDevelopers
+      display_name: Google Developers
+      priority: high
+      topics: [ai, cloud, developer-tools]
+      fetch_limit: 8
+      enrichment_level: metadata
+      source_mode: rss
+
+  we_mp_rss_local_database:
+    description: WeChat public accounts already collected by a local We-MP-RSS SQLite database.
+    status: stable_local
+    user_should_provide:
+      - db_path
+    notes:
+      - First follow public accounts in We-MP-RSS.
+      - Then point this provider at the local SQLite database.
+      - Do not commit real db_path values to git.
+    example:
+      platform: we_mp_rss
+      display_name: WeChat Public Accounts
+      db_path: C:/path/to/we_mp_rss.db
+      priority: high
+      topics: [ai, investing, macro, policy]
+      fetch_limit: 30
+      enrichment_level: fulltext
+      source_mode: local_sqlite
+
+  we_mp_rss_selected_accounts:
+    description: WeChat public accounts from We-MP-RSS, filtered to selected account names.
+    status: stable_local
+    user_should_provide:
+      - db_path
+      - include_mp_names
+    example:
+      platform: we_mp_rss
+      display_name: Selected WeChat Accounts
+      db_path: C:/path/to/we_mp_rss.db
+      include_mp_names:
+        - 赛博禅心
+        - 数字生命卡兹克
+        - 清科研究
+      priority: high
+      topics: [ai, macro, policy]
+      fetch_limit: 20
+      enrichment_level: fulltext
+      source_mode: local_sqlite
+
+  bilibili_up_via_rsshub:
+    description: Bilibili creator updates through RSSHub. Dynamic feed is usually more robust than video feed.
+    status: best_effort_rsshub
+    user_should_provide:
+      - uid
+      - rsshub_base_url
+    examples:
+      dynamic:
+        platform: rss
+        feed_url: https://rsshub.app/bilibili/user/dynamic/UID
+        display_name: Bilibili UP Dynamic
+        priority: medium
+        topics: [ai, tech]
+        fetch_limit: 10
+        enrichment_level: metadata
+        source_mode: rsshub
+      videos:
+        platform: rss
+        feed_url: https://rsshub.app/bilibili/user/video/UID
+        display_name: Bilibili UP Videos
+        priority: medium
+        topics: [ai, tech]
+        fetch_limit: 10
+        enrichment_level: metadata
+        source_mode: rsshub
+
+  telegram_public_channel_via_rsshub:
+    description: Public Telegram channel via RSSHub.
+    status: best_effort_rsshub
+    user_should_provide:
+      - channel_username
+      - rsshub_base_url
+    example:
+      platform: rss
+      feed_url: https://rsshub.app/telegram/channel/CHANNEL_USERNAME
+      display_name: Telegram Channel
+      priority: medium
+      topics: [ai, markets]
+      fetch_limit: 10
+      enrichment_level: metadata
+      source_mode: rsshub
+
+  github_releases_via_atom:
+    description: GitHub releases through built-in Atom feed. Native GitHub provider can replace this later.
+    status: stable
+    user_should_provide:
+      - owner
+      - repo
+    example:
+      platform: rss
+      feed_url: https://github.com/OWNER/REPO/releases.atom
+      display_name: OWNER/REPO Releases
+      priority: medium
+      topics: [developer-tools, ai]
+      fetch_limit: 10
+      enrichment_level: metadata
+      source_mode: atom
+
+  xiaohongshu_mediacrawler:
+    description: Xiaohongshu via local MediaCrawler. Experimental, login-state based, not complete coverage.
+    status: experimental_probe
+    user_should_provide:
+      - mediacrawler_home
+      - local_login_state
+      - creator_or_keyword
+    warning: Cannot guarantee every update. Use for low-frequency discovery only.
+    example:
+      platform: mediacrawler
+      target_platform: xhs
+      mode: creator
+      display_name: Xiaohongshu Creator
+      priority: medium
+      topics: [consumer, ai]
+      fetch_limit: 5
+      enrichment_level: metadata
+      source_mode: local_browser
+
+  unsupported_native_x:
+    description: X/Twitter native monitoring requires official API or paid/credentialed provider.
+    status: not_supported_by_default
+    user_should_provide:
+      - api_key_or_external_feed
+    warning: Do not add as a stable watchlist source unless an official API or reliable feed is configured.
+
+  unsupported_private_discord:
+    description: Discord private channel monitoring requires a bot with channel permissions.
+    status: manual_setup_required
+    user_should_provide:
+      - bot_token
+      - channel_id
+      - explicit_server_permission
+    warning: Do not use user-account automation. Prefer a bot and obey workspace rules.

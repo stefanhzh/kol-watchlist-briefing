@@ -1,0 +1,4 @@
+interface:
+  display_name: "KOL Watchlist Briefing"
+  short_description: "Monitor configured KOL sources and run ranked briefings."
+  default_prompt: "列出我现在关注了哪些 KOL 源，并跑一版 KOL briefing。"

@@ -1,0 +1,38 @@
+﻿__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local runtime artifacts
+config/kol_watchlist.yaml
+config/kol_watchlist.yaml.bak
+data/
+reports/
+artifacts/
+experiments/
+
+# Local secrets, tokens, sessions, browser state, and databases
+.env
+.env.*
+*.env
+*.key
+*.pem
+*.p12
+*.pfx
+*token*
+*cookie*
+*session*
+*.sqlite
+*.sqlite3
+*.db
+*.log
+request_audit.jsonl
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
