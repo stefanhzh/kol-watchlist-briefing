@@ -24,6 +24,10 @@ from scripts.kol_watchlist.config import (  # noqa: E402
 )
 from scripts.kol_watchlist.utils import request_text  # noqa: E402
 from scripts.kol_watchlist.dedupe import dedupe_items  # noqa: E402
+from scripts.kol_watchlist.enrichers.crawl4ai_fulltext import (  # noqa: E402
+    CRAWL4AI_LEVELS,
+    enrich_items_with_crawl4ai,
+)
 from scripts.kol_watchlist.models import WatchAccount, WatchItem, WatchlistReport  # noqa: E402
 from scripts.kol_watchlist.providers import provider_for  # noqa: E402
 from scripts.kol_watchlist.render import write_outputs  # noqa: E402
@@ -96,9 +100,16 @@ def doctor(args: argparse.Namespace) -> None:
     print(f"recipes={_display_path(RECIPES_PATH) if RECIPES_PATH.exists() else 'missing'}")
     print("")
     print("Provider checks:")
+    crawl4ai_requested = False
     for index, account in enumerate(config.accounts, start=1):
         status, message = _doctor_account(account)
         print(f"{index}. [{status}] {account.platform} / {account.display_name}: {message}")
+        if account.enrichment_level in CRAWL4AI_LEVELS:
+            crawl4ai_requested = True
+    if crawl4ai_requested:
+        status = "ok" if _crawl4ai_installed() else "needs_optional_install"
+        message = "crawl4ai is installed." if status == "ok" else "Install crawl4ai and its browser runtime before using browser fulltext."
+        print(f"- [{status}] enrichment / crawl4ai: {message}")
     print("")
     print("What coworkers need to configure:")
     print("- YouTube: provide a channel_id or a feed_url.")
@@ -106,6 +117,7 @@ def doctor(args: argparse.Namespace) -> None:
     print("- Xiaoyuzhou: provide a podcast_url; an episode_url can be used to resolve the podcast.")
     print("- We-MP-RSS: install/run We-MP-RSS locally, then provide db_path or WE_MP_RSS_DB_PATH.")
     print("- Private Discord/X/TikTok/Reddit OAuth sources need explicit tokens or bots; keep those local.")
+    print("- Crawl4AI fulltext is optional. Use enrichment_level=crawl4ai or browser_fulltext, then install crawl4ai locally.")
     print("- Never commit config/kol_watchlist.yaml, cookies, tokens, browser state, or local databases.")
 
 
@@ -188,6 +200,19 @@ def run(args: argparse.Namespace) -> tuple[WatchlistReport, dict[str, str]]:
         source_summaries.append(result.to_summary_dict())
 
     deduped = dedupe_items(fetched_items)
+    crawl4ai_summary = enrich_items_with_crawl4ai(deduped)
+    if crawl4ai_summary.attempted or crawl4ai_summary.skipped or crawl4ai_summary.errors:
+        source_summaries.append(
+            {
+                "platform": "enrichment",
+                "account": "crawl4ai",
+                "account_key": "enrichment:crawl4ai",
+                "status": "ok" if crawl4ai_summary.enriched else "skipped",
+                "raw_count": crawl4ai_summary.enriched,
+                "error": "",
+                "diagnostics": crawl4ai_summary.to_diagnostics(),
+            }
+        )
     state = load_state(args.state)
     unseen = filter_unseen_items(deduped, state) if not args.include_seen else deduped
     ranked = score_items(unseen, config, lookback_hours=lookback_hours)
@@ -424,6 +449,14 @@ def _configured_db_paths(account: WatchAccount) -> list[Path]:
         values.append(account.db_path)
     values.extend(account.db_paths)
     return [Path(os.path.expandvars(os.path.expanduser(value))).resolve() for value in values if value]
+
+
+def _crawl4ai_installed() -> bool:
+    try:
+        import crawl4ai  # noqa: F401
+    except Exception:
+        return False
+    return True
 
 
 def main(argv: list[str] | None = None) -> None:

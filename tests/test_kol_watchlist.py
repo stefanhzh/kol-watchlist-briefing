@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import io
 import json
+from types import ModuleType, SimpleNamespace
 from pathlib import Path
 import sys
 import tempfile
@@ -22,6 +23,7 @@ if str(ROOT) not in sys.path:
 from scripts.kol_watchlist import cli  # noqa: E402
 from scripts.kol_watchlist.config import load_watchlist_config  # noqa: E402
 from scripts.kol_watchlist.dedupe import dedupe_items  # noqa: E402
+from scripts.kol_watchlist.enrichers.crawl4ai_fulltext import enrich_items_with_crawl4ai  # noqa: E402
 from scripts.kol_watchlist.models import WatchAccount, WatchItem, WatchlistConfig, WatchlistReport  # noqa: E402
 from scripts.kol_watchlist.providers.rss import RssProvider  # noqa: E402
 from scripts.kol_watchlist.providers.we_mp_rss import WeMpRssProvider  # noqa: E402
@@ -309,6 +311,46 @@ accounts:
         args = cli.parse_args(["--config", "config/kol_watchlist.example.yaml", "--dry-run"])
         self.assertEqual(args.command, "run")
         self.assertTrue(args.dry_run)
+
+    def test_crawl4ai_enricher_populates_fulltext_when_available(self) -> None:
+        class FakeCrawler:
+            async def __aenter__(self) -> "FakeCrawler":
+                return self
+
+            async def __aexit__(self, exc_type, exc, traceback) -> None:  # noqa: ANN001
+                return None
+
+            async def arun(self, url: str) -> object:
+                return SimpleNamespace(markdown=SimpleNamespace(fit_markdown=f"Full markdown from {url}"))
+
+        fake_module = ModuleType("crawl4ai")
+        fake_module.AsyncWebCrawler = FakeCrawler  # type: ignore[attr-defined]
+        original = sys.modules.get("crawl4ai")
+        sys.modules["crawl4ai"] = fake_module
+        try:
+            item = WatchItem(
+                id="rss:1",
+                platform="rss",
+                account_id="feed",
+                account_display_name="Feed",
+                account_priority="high",
+                content_id="1",
+                content_type="article",
+                title="Article",
+                url="https://example.com/article",
+                canonical_url="https://example.com/article",
+                enrichment_status="crawl4ai",
+            )
+            summary = enrich_items_with_crawl4ai([item], max_items=1)
+        finally:
+            if original is None:
+                sys.modules.pop("crawl4ai", None)
+            else:
+                sys.modules["crawl4ai"] = original
+        self.assertEqual(summary.attempted, 1)
+        self.assertEqual(summary.enriched, 1)
+        self.assertEqual(item.enrichment_status, "crawl4ai_fulltext")
+        self.assertIn("Full markdown", item.enriched_text)
 
     def test_cli_add_rss_appends_source_and_backs_up(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

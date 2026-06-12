@@ -14,6 +14,7 @@ description: Manage and run the daily-newsletter repo's KOL watchlist briefing w
 - Before any command that overwrites or edits `config/kol_watchlist.yaml`, back it up to `config/kol_watchlist.yaml.bak`.
 - Never place cookies, tokens, local browser state, private database contents, or private local paths in chat reports or shared docs.
 - Treat `config/kol_watchlist.recipes.yaml` as the copy/paste cookbook for source examples. Do not run it directly.
+- Treat Crawl4AI as optional browser fulltext enrichment for web pages. Do not require it for normal runs, and do not describe it as audio/video transcription.
 
 ## Quick Commands
 
@@ -85,6 +86,14 @@ When the user asks to add a new source, first identify the platform capability:
 If the source is RSS, YouTube, or Xiaoyuzhou and the user has supplied the required URL or ID, use `add-rss`, `add-youtube`, or `add-xiaoyuzhou`. These commands create the local config if missing, write `config/kol_watchlist.yaml.bak` before changes, and avoid duplicate sources. Run `list` after adding.
 
 If the source is stable but no add command exists yet, edit `config/kol_watchlist.yaml` after backing it up. If not enough information is supplied, ask only for the missing item needed to configure that platform.
+
+When the user asks for webpage/fulltext extraction for RSS, blogs, newsletters, or GitHub release pages, set `enrichment_level: crawl4ai` or `browser_fulltext` for that source and mention the optional setup:
+
+```bash
+pip install -r requirements-optional.txt
+```
+
+If Crawl4AI is not installed, the briefing should still run with source metadata and report an enrichment diagnostic.
 
 ## Source Inputs
 

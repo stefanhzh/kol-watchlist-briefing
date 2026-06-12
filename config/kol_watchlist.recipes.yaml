@@ -22,6 +22,29 @@ recipes:
       fetch_limit: 10
       enrichment_level: metadata
 
+  rss_with_crawl4ai_fulltext:
+    description: Public RSS or Atom feed with optional Crawl4AI browser fulltext enrichment for linked article pages.
+    status: stable_optional_enrichment
+    user_should_provide:
+      - feed_url
+      - display_name
+    local_setup:
+      - pip install -r requirements-optional.txt
+      - install Crawl4AI browser runtime if prompted by Crawl4AI
+    notes:
+      - Use this for web articles, blogs, newsletters, and GitHub release pages.
+      - It does not transcribe audio or video.
+      - If Crawl4AI is unavailable, the briefing still runs with source metadata.
+    example:
+      platform: rss
+      feed_url: https://example.com/feed.xml
+      display_name: Example Feed With Fulltext
+      priority: high
+      topics: [ai, investing]
+      fetch_limit: 5
+      enrichment_level: crawl4ai
+      source_mode: rss
+
   xiaoyuzhou_podcast:
     description: Xiaoyuzhou podcast page. The provider reads public page data and checks new episodes.
     status: stable_public_page

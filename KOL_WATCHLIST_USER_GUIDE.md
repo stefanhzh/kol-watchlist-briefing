@@ -37,6 +37,37 @@
 - `reports/kol_watchlist/`：每次运行生成的报告。
 - `skills/kol-watchlist-briefing/SKILL.md`：给 Codex 看的操作规则，让你可以用自然语言说“把这个频道加进去”。
 
+## 可选：安装 Crawl4AI 全文能力
+
+默认情况下，工具会使用 RSS 描述、网页自带摘要、小宇宙 shownotes、We-MP-RSS 本地正文等信息。
+
+如果你希望对 RSS 文章、博客、Newsletter、GitHub release 页面等网页进一步抽取正文，可以额外安装 Crawl4AI：
+
+```bash
+pip install -r requirements-optional.txt
+```
+
+有些环境还需要按 Crawl4AI 的提示安装浏览器运行时。安装后，把某个来源设为：
+
+```yaml
+enrichment_level: crawl4ai
+```
+
+或：
+
+```yaml
+enrichment_level: browser_fulltext
+```
+
+这样运行 briefing 时，会尝试用浏览器打开条目的 URL，并把页面 Markdown 正文写入 `enriched_text`。
+
+注意：
+
+- Crawl4AI 是可选增强；没安装时，普通 watchlist 仍然可以运行。
+- 它适合网页正文抽取，不负责音频转写或视频字幕。
+- 对强反爬、登录态、付费墙页面，仍然不能保证成功。
+- 全文会被截断保存，避免报告 JSON 过大。
+
 ## 第一次使用
 
 在项目根目录运行：
@@ -90,6 +121,12 @@ python -X utf8 -m scripts.kol_watchlist.cli add-rss "https://example.com/feed.xm
 - `--topics`：主题标签，用英文逗号隔开。
 - `--fetch-limit`：每次最多取多少条。
 - `--enrichment-level`：增强级别，当前常用 `metadata`。
+
+如果这个 RSS 指向的是网页文章，并且你已经安装了 Crawl4AI，可以这样启用网页全文：
+
+```bash
+python -X utf8 -m scripts.kol_watchlist.cli add-rss "https://example.com/feed.xml" --display-name "Example Feed" --topics "ai, markets" --enrichment-level crawl4ai
+```
 
 添加 GitHub releases 也用这个命令。例如：
 
@@ -290,7 +327,7 @@ reports/kol_watchlist/<运行时间>/
 
 **摘要是怎么来的？**
 
-当前摘要主要来自来源自带的 description、RSS 内容、小宇宙 shownotes、We-MP-RSS 本地正文。还不是统一 LLM 总结。后续可以加“全文/字幕 -> LLM 摘要 -> 重点提炼”的统一 summarizer。
+当前摘要主要来自来源自带的 description、RSS 内容、小宇宙 shownotes、We-MP-RSS 本地正文。启用 Crawl4AI 后，RSS/网页条目可以额外抽取网页 Markdown 全文。它还不是统一 LLM 总结；后续可以加“全文/字幕 -> LLM 摘要 -> 重点提炼”的统一 summarizer。
 
 ## 给 Codex 的自然语言例子
 
